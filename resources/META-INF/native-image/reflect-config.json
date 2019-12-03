@@ -1,0 +1,38 @@
+[
+{
+  "name":"[Ljava.lang.String;"
+},
+{
+  "name":"check_monitor_ssh.core__init"
+},
+{
+  "name":"clojure.core.server__init"
+},
+{
+  "name":"clojure.core__init"
+},
+{
+  "name":"org.apache.log4j.pattern.DatePatternConverter",
+  "methods":[{"name":"newInstance","parameterTypes":["java.lang.String[]"] }]
+},
+{
+  "name":"org.apache.log4j.pattern.LevelPatternConverter",
+  "methods":[{"name":"newInstance","parameterTypes":["java.lang.String[]"] }]
+},
+{
+  "name":"org.apache.log4j.pattern.LineSeparatorPatternConverter",
+  "methods":[{"name":"newInstance","parameterTypes":["java.lang.String[]"] }]
+},
+{
+  "name":"org.apache.log4j.pattern.LoggerPatternConverter",
+  "methods":[{"name":"newInstance","parameterTypes":["java.lang.String[]"] }]
+},
+{
+  "name":"org.apache.log4j.pattern.MessagePatternConverter",
+  "methods":[{"name":"newInstance","parameterTypes":["java.lang.String[]"] }]
+},
+{
+  "name":"org.apache.log4j.pattern.ThreadPatternConverter",
+  "methods":[{"name":"newInstance","parameterTypes":["java.lang.String[]"] }]
+}
+]

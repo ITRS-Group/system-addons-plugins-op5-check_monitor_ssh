@@ -1,0 +1,10 @@
+{
+  "resources":[
+    {"pattern":"check_monitor_ssh/core.clj"}, 
+    {"pattern":"check_monitor_ssh/core__init.class"}, 
+    {"pattern":"clojure/core.clj"}, 
+    {"pattern":"clojure/core/server.clj"}, 
+    {"pattern":"clojure/core/server__init.class"}, 
+    {"pattern":"clojure/core__init.class"}
+  ]
+}
