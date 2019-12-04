@@ -1,6 +1,6 @@
 Summary: Check Monitor SSH
 Name: check-monitor-ssh
-Version: 0.1.1
+Version: 0.1.2
 Release: 1
 License: ISC
 Source: %name-%version.tar.gz
@@ -27,6 +27,7 @@ cp target/%name %buildroot%{prefix}/%name
 
 %changelog
 * Wed Dec 04 2019 Johan Thorén <jthoren@itrsgroup.com>
+- 0.1.2 Error handling when there is no entry for host in known_hosts.
 - 0.1.1 Error handling when no known_hosts is found.
 * Tue Dec 03 2019 Johan Thorén <jthoren@itrsgroup.com>
 - 0.1.0 Initial commit

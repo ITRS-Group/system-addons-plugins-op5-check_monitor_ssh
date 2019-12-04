@@ -116,7 +116,10 @@
     (try
       (let [known-hosts (slurp known-hosts-file)
             host-key (re-find (re-pattern host) known-hosts)]
-        (if (= host host-key) true false))
+        (if (= host host-key)
+          true
+          (exit 2 (str "CRITICAL: No entry for " host
+                       " in known_hosts file."))))
       (catch java.io.FileNotFoundException e
         (exit 2 (str "CRITICAL: " (:cause (Throwable->map e))))))))
 
@@ -124,12 +127,11 @@
   "Performs a basic check of ssh-connectivity and environment."
   [host]
   (log/debug "Testing ssh connectivity for host:" host)
-  (when-not (known-host? host)
-    {:result false :error (str "No entry for " host " in known_hosts file.")})
-  (let [c (simple-ssh-command host "exit")]
-    (cond
-      (zero? (:exit c)) {:result true :error nil}
-      :else {:result false :error (:err c)})))
+  (when (known-host? host)
+    (let [c (simple-ssh-command host "exit")]
+      (if (zero? (:exit c))
+        {:result true :error nil}
+        {:result false :error (:err c)}))))
 
 (defn results-from-node
   "Generate a map containing the results for one node."
