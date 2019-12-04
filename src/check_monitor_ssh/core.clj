@@ -117,28 +117,31 @@
       (let [known-hosts (slurp known-hosts-file)
             host-key (re-find (re-pattern host) known-hosts)]
         (if (= host host-key)
-          true
-          (exit 2 (str "CRITICAL: No entry for " host
-                       " in known_hosts file."))))
+          {:match true :error nil}
+          {:match false :error (str "No entry for " host " in known_hosts")}))
       (catch java.io.FileNotFoundException e
-        (exit 2 (str "CRITICAL: " (:cause (Throwable->map e))))))))
+        {:match false :error (:cause (Throwable->map e))}))))
 
 (defn test-ssh-connectivity
   "Performs a basic check of ssh-connectivity and environment."
   [host]
   (log/debug "Testing ssh connectivity for host:" host)
-  (when (known-host? host)
-    (let [c (simple-ssh-command host "exit")]
-      (if (zero? (:exit c))
-        {:result true :error nil}
-        {:result false :error (:err c)}))))
+  (let [k (known-host? host)]
+    (if-not (:match k)
+      {:result false :error (:error k)}
+      (let [c (simple-ssh-command host "exit")]
+        (cond
+          (zero? (:exit c)) {:result true :error nil}
+          :else {:result false :error (:err c)})))))
 
 (defn results-from-node
   "Generate a map containing the results for one node."
   [node]
-  {:name (:name node)
-   :connected (:result (test-ssh-connectivity (:address node)))
-   :address (:address node)})
+  (let [t (test-ssh-connectivity (:address node))]
+    {:name (:name node)
+     :connected (:result t)
+     :address (:address node)
+     :error (:error t)}))
 
 (defn results-from-cluster
   "Needs a collection of node(s) to iterate over."
@@ -160,7 +163,7 @@
         ;; is to avoid silent errors.
         (doseq [i <>]
           (when-not (contains? nodes (keyword i))
-            (exit 3 (str "UNKNOWN: No such node: " i))))
+            (exit 66 (str "ERROR: No such node: " i))))
         (map keyword <>)) ; Make keywords out of the items.
       (conj <> :ipc)      ; Add the local node to the list and
       (apply dissoc nodes <>)))) ; delete them all, returning a new map.
@@ -170,16 +173,30 @@
   (let [results (results-from-cluster (vals nodes))
         successful (filter :connected results)
         failed (remove :connected results)
-        failed-names (map :name failed)
+        errors (filter :error results)
         successful-names (map :name successful)
+        failed-names (map :name failed)
+        errors-names (map :name errors)
+        errors-messages (map :error errors)
         failed-string (if (> (count failed) 1)
                         (str/join "," failed-names)
                         (first failed-names))
         successful-string (if (> (count successful) 1)
                             (str/join "," successful-names)
                             (first successful-names))
+        errors-names-string (if (> (count errors) 1)
+                              (str/join "," errors-names)
+                              (first errors-names))
+        errors-messages-string (if (> (count errors) 1)
+                                 (str/join ", " errors-messages)
+                                 (first errors-messages))
         perfdata (generate-perfdata-string (count failed))]
     (cond
+      (seq errors) ; If there are error messages.
+      (exit 3 (str "UNKNOWN: Problems connecting to: "
+                   errors-names-string ". "
+                   "Errors: " errors-messages-string
+                   perfdata))
       (seq failed) ; If there are failed nodes.
       (exit 2 (str "CRITICAL: Unable to connect to: "
                    failed-string perfdata))
