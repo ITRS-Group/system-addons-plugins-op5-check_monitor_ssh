@@ -106,17 +106,19 @@
 (defn simple-ssh-command
   "This is simply a wrapper of the bash function to execute the command
   remotely instead. Host must be resolvable."
-  [host command]
-  (bash (str "ssh -T " host " " command)))
+  [host command & {:keys [user] :or {user "monitor"}}]
+  (bash (str "ssh -T " user "@" host " " command)))
 
 (defn known-host?
   "Checks to see if there is an entry for the host in the 'known_hosts' file."
   [host]
-  (let [known-hosts
-        (slurp (str (System/getProperty "user.home")
-                    "/.ssh/known_hosts"))
-        host-key (re-find (re-pattern host) known-hosts)]
-    (if (= host host-key) true false)))
+  (let [known-hosts-file "/opt/monitor/.ssh/known_hosts"]
+    (try
+      (let [known-hosts (slurp known-hosts-file)
+            host-key (re-find (re-pattern host) known-hosts)]
+        (if (= host host-key) true false))
+      (catch java.io.FileNotFoundException e
+        (exit 2 (str "CRITICAL: " (:cause (Throwable->map e))))))))
 
 (defn test-ssh-connectivity
   "Performs a basic check of ssh-connectivity and environment."

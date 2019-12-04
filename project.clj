@@ -1,4 +1,4 @@
-(defproject check-monitor-ssh "0.1.0"
+(defproject check-monitor-ssh "0.1.1"
   :description "Check Monitor SSH"
   :url "https://itrsgroup.com"
   :license {:name "ISC License"
