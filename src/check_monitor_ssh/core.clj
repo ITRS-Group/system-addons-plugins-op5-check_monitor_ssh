@@ -24,9 +24,7 @@
 (def exit-codes
   "The following exit codes may be used by the 'exit' function."
   {:64 "UNKNOWN: Running this plugin as root is not allowed."
-   :65 (str "OK: Running this plugin on a single node cluster is of no use, "
-            "no connections to test"
-            (generate-perfdata-string 0))})
+   :65 (str "OK: No connections to test" (generate-perfdata-string 0))})
 
 (defn exit
   "Prints a message and exits the program with the given status code."
@@ -60,8 +58,10 @@
   ;; and positional.
   [["-d" "--debug" "Sets log level to debug" :id :debug? :default false]
    ["-h" "--help" "Print this help message" :default false]
-   ["-i" "--ignore LIST" "Ignore the following nodes, comma separated list"
-    :default nil]])
+   ["-i" "--ignore=LIST" "Ignore the following nodes, comma separated list"
+    :default nil]
+   ["-t" "--timeout=INTEGER" "Seconds before connection times out"
+    :default 10]])
 
 (defn usage
   "Prints a brief description and a short list of available options."
@@ -91,7 +91,8 @@
       ;; custom validation on arguments
       :else
       {:debug? (:debug? options)
-       :ignore (:ignore options)})))
+       :ignore (:ignore options)
+       :timeout (:timeout options)})))
 
 ;; End of command line parsing.
 
@@ -106,8 +107,9 @@
 (defn simple-ssh-command
   "This is simply a wrapper of the bash function to execute the command
   remotely instead. Host must be resolvable."
-  [host command & {:keys [user] :or {user "monitor"}}]
-  (bash (str "ssh -T " user "@" host " " command)))
+  [host command timeout & {:keys [user] :or {user "monitor"}}]
+  (bash (str "ssh -T -o ConnectTimeout=" timeout
+             " " user "@" host " " command)))
 
 (defn known-host?
   "Checks to see if there is an entry for the host in the 'known_hosts' file."
@@ -124,20 +126,20 @@
 
 (defn test-ssh-connectivity
   "Performs a basic check of ssh-connectivity and environment."
-  [host]
+  [host timeout]
   (log/debug "Testing ssh connectivity for host:" host)
   (let [k (known-host? host)]
     (if-not (:match k)
       {:result false :error (:error k)}
-      (let [c (simple-ssh-command host "exit")]
+      (let [c (simple-ssh-command host "exit" timeout)]
         (cond
           (zero? (:exit c)) {:result true :error nil}
           :else {:result false :error (str/trim-newline (:err c))})))))
 
 (defn results-from-node
   "Generate a map containing the results for one node."
-  [node]
-  (let [t (test-ssh-connectivity (:address node))]
+  [node timeout]
+  (let [t (test-ssh-connectivity (:address node) timeout)]
     {:name (:name node)
      :connected (:result t)
      :address (:address node)
@@ -145,9 +147,9 @@
 
 (defn results-from-cluster
   "Needs a collection of node(s) to iterate over."
-  [nodes]
+  [nodes timeout]
   (log/debug "Running results-from-cluster on" nodes)
-  (let [r (for [n nodes] (results-from-node n))]
+  (let [r (for [n nodes] (results-from-node n timeout))]
     (if (< (count r) 1) nil r)))
 
 (defn filter-out-ignored-hosts
@@ -169,8 +171,8 @@
       (apply dissoc nodes <>)))) ; delete them all, returning a new map.
 
 (defn run-tests!
-  [nodes]
-  (let [results (results-from-cluster (vals nodes))
+  [nodes timeout]
+  (let [results (results-from-cluster (vals nodes) timeout)
         successful (filter :connected results)
         failed (remove :connected results)
         errors (filter :error results)
@@ -190,23 +192,32 @@
         errors-messages-string (if (> (count errors) 1)
                                  (str/join ", " errors-messages)
                                  (first errors-messages))
-        perfdata (generate-perfdata-string (count failed))]
-    (println errors-messages)
+        perfdata (generate-perfdata-string (count failed))
+        filter-error #(and (seq errors)
+                           (seq (remove nil? (for [m errors-messages]
+                                               (re-find % m)))))
+        critical-error #(exit 2 (str "CRITICAL: " % " for: "
+                                     errors-names-string "." perfdata))]
     (cond
-      (and (seq errors)
-           (seq (remove nil? (for [m errors-messages]
-                               (re-find #"Connection refused" m)))))
-      (exit 2 (str "CRITICAL: Connection refused for: "
-                   errors-names-string ". "
-                   perfdata))
-      (seq errors) ; If there are error messages.
+      (filter-error #"Connection refused")
+      (critical-error "Connection refused")
+      ;;
+      (filter-error #"Connection timed out")
+      (critical-error "Connection timed out")
+      ;;
+      (filter-error #"Could not resolve")
+      (critical-error "Could not resolve")
+      ;;
+      (seq errors) ; If there are error messages not caught by the filters.
       (exit 3 (str "UNKNOWN: Problems connecting to: "
                    errors-names-string ". "
                    "Errors: " errors-messages-string
                    perfdata))
+      ;;
       (seq failed) ; If there are failed nodes.
       (exit 2 (str "CRITICAL: Unable to connect to: "
                    failed-string perfdata))
+      ;;
       :else
       (exit 0 (str "OK: Successfully connected to: "
                    successful-string perfdata)))))
@@ -214,7 +225,7 @@
 ;; End of functions relating to remote connections.
 
 (defn -main [& args]
-  (let [{:keys [debug? ignore exit-message ok?]} (validate-args args)
+  (let [{:keys [debug? ignore timeout exit-message ok?]} (validate-args args)
         user (current-username?)]
     (when debug?
       (set-default-root-logger! :debug "%d [%p] %c (%t) %m%n"))
@@ -230,4 +241,4 @@
                 (nil? (first nodes-to-test)))
         (exit 0 (:65 exit-codes)))
       (log/debug "Nodes to test:" (keys nodes-to-test))
-      (run-tests! nodes-to-test))))
+      (run-tests! nodes-to-test timeout))))

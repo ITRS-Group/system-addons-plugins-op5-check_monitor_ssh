@@ -1,6 +1,6 @@
 Summary: Check Monitor SSH
 Name: check-monitor-ssh
-Version: 0.1.4
+Version: 0.1.5
 Release: 1
 License: ISC
 Source: %name-%version.tar.gz
@@ -27,6 +27,7 @@ cp target/%name %buildroot%{prefix}/%name
 
 %changelog
 * Thu Dec 05 2019 Johan Thorén <jthoren@itrsgroup.com>
+- 0.1.5 Added -t (timeout) option.
 - 0.1.4 Improved handling of Connection refused errors.
 * Wed Dec 04 2019 Johan Thorén <jthoren@itrsgroup.com>
 - 0.1.3 Improved error handling overall.
