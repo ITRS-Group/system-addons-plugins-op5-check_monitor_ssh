@@ -120,7 +120,7 @@
           {:match true :error nil}
           {:match false :error (str "No entry for " host " in known_hosts")}))
       (catch java.io.FileNotFoundException e
-        {:match false :error (:cause (Throwable->map e))}))))
+        {:match false :error (str/trim-newline (:cause (Throwable->map e)))}))))
 
 (defn test-ssh-connectivity
   "Performs a basic check of ssh-connectivity and environment."
@@ -132,7 +132,7 @@
       (let [c (simple-ssh-command host "exit")]
         (cond
           (zero? (:exit c)) {:result true :error nil}
-          :else {:result false :error (:err c)})))))
+          :else {:result false :error (str/trim-newline (:err c))})))))
 
 (defn results-from-node
   "Generate a map containing the results for one node."
@@ -191,7 +191,14 @@
                                  (str/join ", " errors-messages)
                                  (first errors-messages))
         perfdata (generate-perfdata-string (count failed))]
+    (println errors-messages)
     (cond
+      (and (seq errors)
+           (seq (remove nil? (for [m errors-messages]
+                               (re-find #"Connection refused" m)))))
+      (exit 2 (str "CRITICAL: Connection refused for: "
+                   errors-names-string ". "
+                   perfdata))
       (seq errors) ; If there are error messages.
       (exit 3 (str "UNKNOWN: Problems connecting to: "
                    errors-names-string ". "
