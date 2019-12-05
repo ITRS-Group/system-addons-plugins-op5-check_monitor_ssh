@@ -4,11 +4,11 @@
 
 This project is currently in beta stage and more testing is needed and welcome.
 
-*check-monitor-ssh* is a Naemon plugin to verify ssh connectivity within a cluster
+*check_monitor_ssh* is a Naemon plugin to verify ssh connectivity within a cluster
 
 ## Usage
 
-See [the documentation](doc/intro.md "Introduction to check-monitor-ssh") for more information on usage.
+See [the documentation](doc/intro.md "Introduction to check_monitor_ssh") for more information on usage.
 
 ## License
 

@@ -1,25 +1,21 @@
 Summary: Check Monitor SSH
-Name: check-monitor-ssh
-Version: 0.1.5
+Name: check_monitor_ssh
+Version: 0.1.6
 Release: 1
 License: ISC
-Source: %name-%version.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}
 BuildArch: x86_64
 Prefix: /opt/plugins
-Provides: check-monitor-ssh = %version
+Provides: check_monitor_ssh = %version
 Requires: bash
 Requires: openssh-clients
 
 %description
 A Naemon plugin to verify ssh connectivity within a cluster
 
-%prep
-%setup -q
-
 %install
 mkdir --parents --mode 755 %{buildroot}%{prefix}
-cp target/%name %buildroot%{prefix}/%name
+cp /home/builder/code/check_monitor_ssh/target/%name %buildroot%{prefix}/%name
 
 %files
 %defattr(755,root,root)
@@ -27,6 +23,7 @@ cp target/%name %buildroot%{prefix}/%name
 
 %changelog
 * Thu Dec 05 2019 Johan Thorén <jthoren@itrsgroup.com>
+- 0.1.6 Changed name to check_monitor_ssh.
 - 0.1.5 Added -t (timeout) option.
 - 0.1.4 Improved handling of Connection refused errors.
 * Wed Dec 04 2019 Johan Thorén <jthoren@itrsgroup.com>

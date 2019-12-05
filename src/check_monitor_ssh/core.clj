@@ -68,9 +68,10 @@
   [options-summary]
   (str/join
    \newline
-   ["check-monitor-ssh is a Naemon plugin to verify ssh connectivity within a cluster"
+   [(str "check_monitor_ssh is a Naemon plugin to verify ssh connectivity "
+         "within a cluster.")
     ""
-    "Usage: check-monitor-ssh [options]"
+    "Usage: check_monitor_ssh [options]"
     ""
     "Options:"
     options-summary]))
@@ -232,7 +233,7 @@
     (log/debug "Ignoring:" ignore)
     (when (= "root" user)
       (exit 3 (:64 exit-codes)))
-    (log/debug "Running check_ssh_cluster as user" user)
+    (log/debug "Running check_monitor_ssh as user" user)
     (when exit-message
       (exit (if ok? 0 3) exit-message))
     (let [all-nodes (op5.n/nodes)

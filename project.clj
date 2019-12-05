@@ -1,4 +1,4 @@
-(defproject check-monitor-ssh "0.1.5"
+(defproject check-monitor-ssh "0.1.6"
   :description "Check Monitor SSH"
   :url "https://itrsgroup.com"
   :license {:name "ISC License"
@@ -31,6 +31,6 @@
     "-H:ReflectionConfigurationFiles=resources/META-INF/native-image/reflect-config.json"
     "-H:+ReportExceptionStackTraces"
     "-jar" "./target/uberjar/${:uberjar-name:-${:name}-${:version}-standalone.jar}"
-    "-H:Name=target/${:name}"]}
+    "-H:Name=target/check_monitor_ssh"]}
   :profiles {:uberjar {:aot :all}}
   :plugins [[lein-shell "0.5.0"]])
