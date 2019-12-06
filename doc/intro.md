@@ -9,10 +9,11 @@ check_monitor_ssh is a Naemon plugin to verify ssh connectivity within a cluster
 Usage: check_monitor_ssh [options]
 
 Options:
-  -d, --debug                 Sets log level to debug
-  -h, --help                  Print this help message
-  -i, --ignore LIST      nil  Ignore the following nodes, comma separated list
-  -t, --timeout INTEGER  10   Seconds before connection times out
+  -c, --include-connect-no      Also test nodes that has "connect = no" in "merlin.conf"
+  -d, --debug                   Sets log level to debug
+  -h, --help                    Print this help message
+  -i, --ignore LIST        nil  Ignore the following nodes, comma separated list
+  -t, --timeout INTEGER    10   Seconds before connection times out
 ```
 
 Running the plugin with no options will test the connectivity of all nodes in the cluster and return a message like this:
