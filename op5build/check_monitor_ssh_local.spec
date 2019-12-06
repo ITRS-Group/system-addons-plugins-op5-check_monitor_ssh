@@ -1,6 +1,6 @@
 Summary: Check Monitor SSH
 Name: check_monitor_ssh
-Version: 0.1.6
+Version: 0.1.7
 Release: 1
 License: ISC
 BuildRoot: %{_tmppath}/%{name}-%{version}
@@ -22,6 +22,8 @@ cp /home/builder/code/check_monitor_ssh/target/%name %buildroot%{prefix}/%name
 %{prefix}/%name
 
 %changelog
+* Fri Dec 06 2019 Johan Thorén <jthoren@itrsgroup.com>
+- 0.1.7 Now ignoring nodes with connect = no, unless used with the option -c
 * Thu Dec 05 2019 Johan Thorén <jthoren@itrsgroup.com>
 - 0.1.6 Changed name to check_monitor_ssh.
 - 0.1.5 Added -t (timeout) option.

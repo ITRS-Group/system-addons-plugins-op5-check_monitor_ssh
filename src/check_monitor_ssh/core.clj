@@ -56,7 +56,10 @@
   ;; First three strings describe a short-option, long-option with optional
   ;; example argument description, and a description. All three are optional
   ;; and positional.
-  [["-d" "--debug" "Sets log level to debug" :id :debug? :default false]
+  [["-c" "--include-connect-no"
+    "Also test nodes that has \"connect = no\" in \"merlin.conf\""
+    :default false]
+   ["-d" "--debug" "Sets log level to debug" :id :debug? :default false]
    ["-h" "--help" "Print this help message" :default false]
    ["-i" "--ignore=LIST" "Ignore the following nodes, comma separated list"
     :default nil]
@@ -93,6 +96,7 @@
       :else
       {:debug? (:debug? options)
        :ignore (:ignore options)
+       :include-connect-no (:include-connect-no options)
        :timeout (:timeout options)})))
 
 ;; End of command line parsing.
@@ -153,7 +157,17 @@
   (let [r (for [n nodes] (results-from-node n timeout))]
     (if (< (count r) 1) nil r)))
 
-(defn filter-out-ignored-hosts
+(defn filter-out-connect=no
+  "Filter out nodes that have 'connect = no' in merlin.conf."
+  [nodes]
+  (log/debug "Removing any nodes that have connect = no in merlin.conf.")
+  (apply merge
+         (for [[k v]
+               nodes :when (bit-test (Integer/parseInt (:flags v)) 1)]
+           {k v})))
+
+(defn filter-out-ignored-nodes
+  "Filter out nodes that have been listed with the --ignore option."
   [nodes ignore]
   (if-not ignore          ; If there is nothing to ignore,
     (dissoc nodes :ipc)   ; just ignore the local node.
@@ -170,6 +184,12 @@
         (map keyword <>)) ; Make keywords out of the items.
       (conj <> :ipc)      ; Add the local node to the list and
       (apply dissoc nodes <>)))) ; delete them all, returning a new map.
+
+(defn apply-node-filters
+  [nodes ignore include-connect=no]
+  (if-not include-connect=no
+    (filter-out-connect=no (filter-out-ignored-nodes nodes ignore))
+    (filter-out-ignored-nodes nodes ignore)))
 
 (defn run-tests!
   [nodes timeout]
@@ -226,7 +246,8 @@
 ;; End of functions relating to remote connections.
 
 (defn -main [& args]
-  (let [{:keys [debug? ignore timeout exit-message ok?]} (validate-args args)
+  (let [{:keys [debug? ignore include-connect-no timeout exit-message ok?]}
+        (validate-args args)
         user (current-username?)]
     (when debug?
       (set-default-root-logger! :debug "%d [%p] %c (%t) %m%n"))
@@ -236,8 +257,8 @@
     (log/debug "Running check_monitor_ssh as user" user)
     (when exit-message
       (exit (if ok? 0 3) exit-message))
-    (let [all-nodes (op5.n/nodes)
-          nodes-to-test (filter-out-ignored-hosts all-nodes ignore)]
+    (let [nodes-to-test (apply-node-filters (op5.n/nodes) ignore
+                                            include-connect-no)]
       (when (or (empty? nodes-to-test)
                 (nil? (first nodes-to-test)))
         (exit 0 (:65 exit-codes)))
