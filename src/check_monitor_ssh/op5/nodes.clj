@@ -15,7 +15,7 @@
   (println msg)
   (System/exit status))
 
-(defn- get-nodeinfo
+(defn get-nodeinfo
   "Returns a lazy sequence of lists where the first item of each list is
   the name of the node and the rest are its attributes."
   []
@@ -27,7 +27,7 @@
     (catch java.io.IOException e
       (exit 3 (:73 exit-codes)))))
 
-(defn- tidy-nodeinfo
+(defn tidy-nodeinfo
   "Returns a lazy sequence of lists where the output from get-nodeinfo is
   without empty lines and whitespace."
   []
@@ -35,19 +35,23 @@
     (remove empty? (for [s col]
                      (str/trim s)))))
 
-(defn- split-at-equal
-  "Splits a string at the first equal sign surrounded by spaces."
+(defn split-at-equal
+  "Splits a string at the first equal sign preceeded by a space."
   [s]
-  (str/split s #" = " 2))
+  (let [f (str/split s #" =" 2)
+        a (first f)
+        b (str/triml (last f))]
+    (cond
+      (= b "") [a nil]
+      (= b "(null)") [a nil]
+      :else [a b])))
 
-(defn- equals-into-keyvals
+(defn equals-into-keyvals
   "Creates a map containing a keyword and a value, extracted from a string
   divided by an equalsign."
   [s]
   (let [x (split-at-equal s)]
-    (if (= (count x) 1)
-      (hash-map (keyword (first x)) nil)
-      (hash-map (keyword (first x)) (last x)))))
+    (hash-map (keyword (first x)) (last x))))
 
 (defn nodes
   "Returns a map of nodes with their corresponding maps of attributes."

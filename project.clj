@@ -1,4 +1,4 @@
-(defproject check-monitor-ssh "0.1.7"
+(defproject check-monitor-ssh "0.1.8"
   :description "Check Monitor SSH"
   :url "https://itrsgroup.com"
   :license {:name "ISC License"
@@ -8,9 +8,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/tools.cli "0.4.2"]
                  [org.clojure/tools.logging "0.5.0"]
-                 [clj-logging-config "1.9.12"]
-                 [simple-progress "0.1.3"]
-                 [me.raynes/fs "1.4.6"]]
+                 [clj-logging-config "1.9.12"]]
   :main check-monitor-ssh.core
   :target-path "target/%s"
   :release-tasks [["vcs" "assert-committed"]
