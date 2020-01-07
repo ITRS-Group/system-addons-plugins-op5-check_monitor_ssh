@@ -4,16 +4,40 @@
 Executing `check_monitor_ssh` with the `-h` option will show a simple usage message:
 
 ```bash
-check_monitor_ssh is a Naemon plugin to verify ssh connectivity within a cluster.
+check_monitor_ssh is a Naemon plugin to verify ssh connectivity within a Merlin
+cluster.
+
+The default behavior is to test the connectivity to all nodes in merlin.conf
+where the option "connect" is NOT set to "no".
+
+Depending on the result, one of the following exit codes will be given, with
+its corresponding Naemon state:
+
+Exit code:   Naemon state:   Available reasons:
+-------------------------------------------------------------------------------
+0            OK              Successfully connected to all nodes.
+                             No nodes to test.
+1            WARNING         This state is currently NOT IN USE.
+2            CRITICAL        Unable to connect to one or more nodes.
+3            UNKNOWN         There was a problem when connecting to one or more
+                             nodes. (This is used as a fallback when the error
+                             causing the connection error is not recognized.)
+-------------------------------------------------------------------------------
+
+Important: Do NOT run as root, but rather as the user monitor. The wrapper
+"asmonitor" can be used for this purpose.
 
 Usage: check_monitor_ssh [options]
 
 Options:
-  -c, --include-connect-no      Also test nodes that has "connect = no" in "merlin.conf"
-  -d, --debug                   Sets log level to debug
-  -h, --help                    Print this help message
-  -i, --ignore LIST        nil  Ignore the following nodes, comma separated list
-  -t, --timeout INTEGER    10   Seconds before connection times out
+  -c, --include-connect-no       Also test nodes that has "connect = no" in "merlin.conf"
+  -d, --debug                    Set the verbosity level to debug, use only for debugging
+  -h, --help                     Print this help message
+  -i, --ignore LIST         nil  Ignore the following nodes, comma separated list
+  -t, --timeout INTEGER     10   Seconds before connection times out
+
+Example output:
+"OK: Successfully connected to: poller1,peer2|'Failed SSH Connections'=0;1;1;;"
 ```
 
 Running the plugin with no options will test the connectivity of all nodes in the cluster and return a message like this:

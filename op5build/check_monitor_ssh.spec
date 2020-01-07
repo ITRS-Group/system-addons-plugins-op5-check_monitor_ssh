@@ -1,6 +1,6 @@
 Summary: Check Monitor SSH
 Name: check_monitor_ssh
-Version: 0.1.8
+Version: 0.1.9
 Release: 1
 License: ISC
 Source: %name-%version.tar.gz
@@ -26,6 +26,8 @@ cp target/%name %buildroot%{prefix}/%name
 %{prefix}/%name
 
 %changelog
+* Tue Jan 7 2020 Johan Thorén <jthoren@itrsgroup.com>
+- 0.1.9 Added additional documentation.
 * Tue Dec 10 2019 Johan Thorén <jthoren@itrsgroup.com>
 - 0.1.8 Imported tests and updated a couple of functions from ist-collect.
 * Fri Dec 06 2019 Johan Thorén <jthoren@itrsgroup.com>

@@ -1,9 +1,9 @@
-(defproject check-monitor-ssh "0.1.8"
+(defproject check-monitor-ssh "0.1.9"
   :description "Check Monitor SSH"
   :url "https://itrsgroup.com"
   :license {:name "ISC License"
             :url "none"
-            :year 2019
+            :year [2019 2020]
             :key "isc"}
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/tools.cli "0.4.2"]

@@ -15,7 +15,7 @@ See [the documentation](doc/intro.md "Introduction to check_monitor_ssh") for mo
 ```
 ISC License
 
-Copyright (c) 2019, Johan Thoren <jthoren@itrsgroup.com>
+Copyright (c) 2019-2020, Johan Thoren <jthoren@itrsgroup.com>
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
