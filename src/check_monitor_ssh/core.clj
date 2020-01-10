@@ -17,22 +17,26 @@
 (set-default-root-logger! :info "%p: %m%n")
 
 (defn generate-perfdata-string
-  "A template string for use as perfdata output."
+  "A template string for use as perfdata output.
+  The number of `failed` connections should be passed as an integer to be
+  included in the output."
   [failed]
   (str "|'Failed SSH Connections'=" failed ";1;1;;"))
 
-(def exit-codes
-  "The following exit codes may be used by the 'exit' function."
+(def exit-messages
+  "Exit messages used by `exit`."
   {:64 "UNKNOWN: Running this plugin as root is not allowed."
    :65 (str "OK: No connections to test" (generate-perfdata-string 0))})
 
 (defn exit
-  "Prints a message and exits the program with the given status code."
-  [status msg]
-  (println msg)
+  "Print a `message` and exit the program with the given `status` code.
+  See also [[exit-messages]]."
+  [status message]
+  (println message)
   (System/exit status))
 
 (defn current-username?
+  "Find out the username of the user running the application."
   []
   (System/getProperty "user.name"))
 
@@ -68,7 +72,7 @@
     :default 10]])
 
 (defn usage
-  "Prints a brief description and a short list of available options."
+  "Print a brief description and a short list of available options."
   [options-summary]
   (str/join
    \newline
@@ -105,9 +109,10 @@
 
 
 (defn validate-args
-  "Validate command line arguments. Either return a map indicating the program
-  should exit (with a error message, and optional ok status), or a map
-  indicating the ticket-id and the options provided."
+  "Validate command line arguments.
+  Either return a map indicating the program should exit (with a error message,
+  and optional ok status), or a map indicating the ticket-id and the options
+  provided."
   [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
     ;; Exit with a warning if the given ticket-id is not in a valid format.
@@ -126,23 +131,21 @@
 
 ;; End of command line parsing.
 
-;; The following functions are related to remote connections.
-
 (defn bash
-  "Run cmd as an argument to 'bash -c'. This enables most shell
-  features to remain inside the commands being passed."
+  "Run `cmd` as an argument to the shell command 'bash -c'.
+  This enables most shell syntax to be preserved and to work as expected."
   [cmd]
   (shell/sh "bash" "-c" cmd))
 
 (defn simple-ssh-command
-  "This is simply a wrapper of the bash function to execute the command
-  remotely instead. Host must be resolvable."
+  "A wrapper to `bash` to execute the `command` remotely instead of locally.
+  `host` must be resolvable."
   [host command timeout & {:keys [user] :or {user "monitor"}}]
   (bash (str "ssh -T -o ConnectTimeout=" timeout
              " " user "@" host " " command)))
 
 (defn known-host?
-  "Checks to see if there is an entry for the host in the 'known_hosts' file."
+  "Verify that there is an entry for the `host` in the 'known_hosts' file."
   [host]
   (let [known-hosts-file "/opt/monitor/.ssh/known_hosts"]
     (try
@@ -155,7 +158,8 @@
         {:match false :error (str/trim-newline (:cause (Throwable->map e)))}))))
 
 (defn test-ssh-connectivity
-  "Performs a basic check of ssh-connectivity and environment."
+  "Perform a basic check of ssh-connectivity to `host`.
+  See also [[known-host?]] and [[simple-ssh-command]]."
   [host timeout]
   (log/debug "Testing ssh connectivity for host:" host)
   (let [k (known-host? host)]
@@ -167,7 +171,8 @@
           :else {:result false :error (str/trim-newline (:err c))})))))
 
 (defn results-from-node
-  "Generate a map containing the results for one node."
+  "Generate a map containing the results for one `node`.
+  See also [[test-ssh-connectivity]]."
   [node timeout]
   (let [t (test-ssh-connectivity (:address node) timeout)]
     {:name (:name node)
@@ -176,14 +181,14 @@
      :error (:error t)}))
 
 (defn results-from-cluster
-  "Needs a collection of node(s) to iterate over."
+  "Perform `test-ssh-connectivity` tests on all `nodes` in a cluster."
   [nodes timeout]
   (log/debug "Running results-from-cluster on" nodes)
   (let [r (for [n nodes] (results-from-node n timeout))]
     (if (< (count r) 1) nil r)))
 
 (defn filter-out-connect=no
-  "Filter out nodes that have 'connect = no' in merlin.conf."
+  "Filter out any node in `nodes` that have 'connect = no' in 'merlin.conf'."
   [nodes]
   (log/debug "Removing any nodes that have connect = no in merlin.conf.")
   (apply merge
@@ -192,7 +197,8 @@
            {k v})))
 
 (defn filter-out-ignored-nodes
-  "Filter out nodes that have been listed with the --ignore option."
+  "Filter out any node in `nodes` specified by the `--ignore` option.
+  See also [[cli-options]]."
   [nodes ignore]
   (if-not ignore          ; If there is nothing to ignore,
     (dissoc nodes :ipc)   ; just ignore the local node.
@@ -211,12 +217,37 @@
       (apply dissoc nodes <>)))) ; delete them all, returning a new map.
 
 (defn apply-node-filters
+  "Filter out any node from `nodes` according to the options specified.
+  See also [[filter-out-connect=no]] and [[filter-out-ignored-nodes]]."
   [nodes ignore include-connect=no]
   (if-not include-connect=no
     (filter-out-connect=no (filter-out-ignored-nodes nodes ignore))
     (filter-out-ignored-nodes nodes ignore)))
 
 (defn run-tests!
+  "Run `results-from-cluster` on all `nodes`.
+  Then filter out the results to populate `successful`, `failed`, and `errors`
+  for further logical processing.
+
+  Map the names of the respective results and generate strings to be used with
+  any needed error message.
+
+  Generate the perfdata string using `generate-perfdata-string`.
+
+  Then decide which of any potential `errors` that has the highest priority
+  and print a message using `critical-error`, also setting the exit code to 2.
+
+  If there were unlisted `errors`, `exit` with code 3 and print the names and
+  messages that were gathered while running `results-from-node` on the node in
+  question.
+
+  If there were connection `errors` for any node, then `exit` with code 2 and
+  print `failed-string`, which includes `failed-names`, together with the
+  generated `perfdata`.
+
+  If there were no connection `errors`, then `exit` with code 0 and print a
+  `successful-string`, which includes `successful-names`, together with the
+  generated `perfdata`."
   [nodes timeout]
   (let [results (results-from-cluster (vals nodes) timeout)
         successful (filter :connected results)
@@ -268,8 +299,6 @@
       (exit 0 (str "OK: Successfully connected to: "
                    successful-string perfdata)))))
 
-;; End of functions relating to remote connections.
-
 (defn -main [& args]
   (let [{:keys [debug? ignore include-connect-no timeout exit-message ok?]}
         (validate-args args)
@@ -277,7 +306,7 @@
     (when debug?
       (set-default-root-logger! :debug "%d [%p] %c (%t) %m%n"))
     (when (= "root" user)
-      (exit 3 (:64 exit-codes)))
+      (exit 3 (:64 exit-messages)))
     (log/debug "Running check_monitor_ssh as user" user)
     (when exit-message
       (exit (if ok? 0 3) exit-message))
@@ -287,6 +316,6 @@
                                             include-connect-no)]
       (when (or (empty? nodes-to-test)
                 (nil? (first nodes-to-test)))
-        (exit 0 (:65 exit-codes)))
+        (exit 0 (:65 exit-messages)))
       (log/debug "Nodes to test:" (keys nodes-to-test))
       (run-tests! nodes-to-test timeout))))

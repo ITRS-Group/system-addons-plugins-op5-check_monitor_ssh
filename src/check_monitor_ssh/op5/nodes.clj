@@ -7,16 +7,19 @@
 ;; in the cluster. The only public function is 'nodes', which returns
 ;; a map of each node with corresponding keywords and values.
 
-(def exit-codes
-  ;; The following exit codes may be used by the 'exit' function.
+(def exit-messages
+  "Exit messages used by `exit`."
   {:73 "ERROR 73: The program \"mon\" is not installed."})
 
-(defn- exit [status msg]
-  (println msg)
+(defn- exit
+  "Print a `message` and exit the program with the given `status` code.
+  See also [[exit-messages]]."
+  [status message]
+  (println message)
   (System/exit status))
 
 (defn get-nodeinfo
-  "Returns a lazy sequence of lists where the first item of each list is
+  "Return a lazy sequence of lists where the first item of each list is
   the name of the node and the rest are its attributes."
   []
   (try
@@ -25,10 +28,10 @@
          (str/split-lines)
          (partition-all 67))
     (catch java.io.IOException e
-      (exit 3 (:73 exit-codes)))))
+      (exit 3 (:73 exit-messages)))))
 
 (defn tidy-nodeinfo
-  "Returns a lazy sequence of lists where the output from get-nodeinfo is
+  "Return a lazy sequence of lists where the output from [[get-nodeinfo]] is
   without empty lines and whitespace."
   []
   (for [col (get-nodeinfo)]
@@ -36,7 +39,7 @@
                      (str/trim s)))))
 
 (defn split-at-equal
-  "Splits a string at the first equal sign preceeded by a space."
+  "Split a string (`s`) at the first equal sign ('=') preceeded by a space."
   [s]
   (let [f (str/split s #" =" 2)
         a (first f)
@@ -47,14 +50,16 @@
       :else [a b])))
 
 (defn equals-into-keyvals
-  "Creates a map containing a keyword and a value, extracted from a string
-  divided by an equalsign."
+  "Create a map containing a keyword and a value, extracted from a string
+  (`s`) divided by an equalsign ('=').
+  See also [[split-at-equal]]."
   [s]
   (let [x (split-at-equal s)]
     (hash-map (keyword (first x)) (last x))))
 
 (defn nodes
-  "Returns a map of nodes with their corresponding maps of attributes."
+  "Return a map of nodes with their corresponding maps of attributes.
+  See also [[tidy-nodeinfo]] and [[equals-into-keyvals]]."
   []
   (apply merge (for [col (tidy-nodeinfo)]
                  (hash-map (keyword (first col))
