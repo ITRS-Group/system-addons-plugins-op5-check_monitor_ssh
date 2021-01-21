@@ -1,21 +1,30 @@
-Summary: Check Monitor SSH
 Name: check_monitor_ssh
-Version: 0.1.9
-Release: 1
+Version: %{op5version}
+Release: %{op5release}%{?dist}
 License: ISC
-Source: %name-%version.tar.gz
+Vendor: ITRS Group
+Url: https://www.itrsgroup.com
 BuildRoot: %{_tmppath}/%{name}-%{version}
-BuildArch: x86_64
+ExclusiveArch: x86_64
+Summary: Check Monitor SSH
 Prefix: /opt/plugins
-Provides: check_monitor_ssh = %version
+Source: %name-%version.tar.gz
+BuildRequires: containerd.io
+BuildRequires: docker-ce
+BuildRequires: docker-ce-cli
 Requires: bash
 Requires: openssh-clients
+Requires: merlin-apps
 
 %description
-A Naemon plugin to verify ssh connectivity within a cluster
+A system diagnostic tool to help troubleshooting.
 
 %prep
 %setup -q
+dockerd &
+make
+
+%build
 
 %install
 mkdir --parents --mode 755 %{buildroot}%{prefix}
@@ -25,7 +34,12 @@ cp target/%name %buildroot%{prefix}/%name
 %defattr(755,root,root)
 %{prefix}/%name
 
+%clean
+rm -rf %{buildroot}
+
 %changelog
+* Thu Jan 21 2021 Johan Thorén <jthoren@itrsgroup.com>
+- 0.1.10 Fixed problem with encrypted merlin nodes.
 * Tue Jan 7 2020 Johan Thorén <jthoren@itrsgroup.com>
 - 0.1.9 Added additional documentation.
 * Tue Dec 10 2019 Johan Thorén <jthoren@itrsgroup.com>
