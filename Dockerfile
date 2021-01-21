@@ -47,6 +47,7 @@ COPY project.clj .
 COPY resources resources
 COPY src src
 COPY test test
+RUN lein deps
 RUN lein make-uberjars
 
 # Create the native-image based on the uberjar:

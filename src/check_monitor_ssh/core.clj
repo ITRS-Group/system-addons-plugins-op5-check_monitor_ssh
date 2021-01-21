@@ -3,7 +3,8 @@
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.tools.logging :as log]
             [clj-logging-config.log4j]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [trptcolin.versioneer.core :refer [get-version]])
   (:gen-class))
 
 (defn set-default-root-logger!
@@ -15,6 +16,11 @@
 
 (set-default-root-logger! :info "%p: %m%n")
 
+(def version-number
+  "The version number as defined in project.clj."
+  ;; Note that this is evaluated at build time by native-image.
+  (get-version "check-monitor-ssh" "check-monitor-ssh"))
+
 (defn generate-perfdata-string
   "A template string for use as perfdata output.
   The number of `failed` connections should be passed as an integer to be
@@ -24,7 +30,7 @@
 
 (def exit-messages
   "Exit messages used by `exit`."
-  {:64 "UNKNOWN: Running this plugin as root is not allowed."
+  {:64 "ERROR: Running this plugin as root is not allowed."
    :65 (str "OK: No connections to test" (generate-perfdata-string 0))})
 
 (defn exit
@@ -40,82 +46,6 @@
   (System/getProperty "user.name"))
 
 ;; End of general environment functions
-
-(def cli-options
-  ;; First three strings describe a short-option, long-option with optional
-  ;; example argument description, and a description. All three are optional
-  ;; and positional.
-  [["-c" "--include-connect-no"
-    "Also test nodes that has \"connect = no\" in \"merlin.conf\""
-    :default false]
-   ["-d" "--debug" "Set the verbosity level to debug, use only for debugging"
-    :id :debug? :default false]
-   ["-h" "--help" "Print this help message" :default false]
-   ["-i" "--ignore=LIST" "Ignore the following nodes, comma separated list"
-    :default nil]
-   ["-t" "--timeout=INTEGER" "Seconds before connection times out"
-    :default 10]])
-
-(defn usage
-  "Print a brief description and a short list of available options."
-  [options-summary]
-  (str/join
-   \newline
-   ["check_monitor_ssh is a Naemon plugin to verify ssh connectivity within a Merlin"
-    "cluster."
-    ""
-    "The default behavior is to test the connectivity to all nodes in merlin.conf"
-    "where the option \"connect\" is NOT set to \"no\"."
-    ""
-    "Depending on the result, one of the following exit codes will be given, with"
-    "its corresponding Naemon state:"
-    ""
-    "Exit code:   Naemon state:   Available reasons:"
-    "-------------------------------------------------------------------------------"
-    "0            OK              Successfully connected to all nodes."
-    "                             No nodes to test."
-    "1            WARNING         This state is currently NOT IN USE."
-    "2            CRITICAL        Unable to connect to one or more nodes."
-    "3            UNKNOWN         There was a problem when connecting to one or more"
-    "                             nodes. (This is used as a fallback when the error"
-    "                             causing the connection error is not recognized.)"
-    "-------------------------------------------------------------------------------"
-    ""
-    "Important: Do NOT run as root, but rather as the user monitor. The wrapper"
-    "\"asmonitor\" can be used for this purpose if running the plugin from the"
-    "command line."
-    ""
-    "Usage: check_monitor_ssh [options]"
-    ""
-    "Options:"
-    options-summary
-    ""
-    "Example output:"
-    "\"OK: Successfully connected to: poller1,peer2|'Failed SSH Connections'=0;1;1;;\""]))
-
-
-(defn validate-args
-  "Validate command line arguments.
-  Either return a map indicating the program should exit (with a error message,
-  and optional ok status), or a map indicating the ticket-id and the options
-  provided."
-  [args]
-  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
-    ;; Exit with a warning if the given ticket-id is not in a valid format.
-    (log/debug "The following arguments will be processed as modules:" arguments)
-    (cond
-      (:help options) ; help => exit OK with usage summary
-      {:exit-message (usage summary) :ok? true}
-      errors ; errors => exit with description of errors
-      {:exit-message errors}
-      ;; custom validation on arguments
-      :else
-      {:debug? (:debug? options)
-       :ignore (:ignore options)
-       :include-connect-no (:include-connect-no options)
-       :timeout (:timeout options)})))
-
-;; End of command line parsing.
 
 (defn bash
   "Run `cmd` as an argument to the shell command 'bash -c'.
@@ -346,17 +276,97 @@
       (exit 0 (str "OK: Successfully connected to: "
                    successful-string perfdata)))))
 
+;; Beginning of command line parsing.
+
+(def cli-options
+  ;; First three strings describe a short-option, long-option with optional
+  ;; example argument description, and a description. All three are optional
+  ;; and positional.
+  [["-c" "--include-connect-no"
+    "Also test nodes that has \"connect = no\" in \"merlin.conf\""
+    :default false]
+   ["-d" "--debug" "Set the verbosity level to debug, use only for debugging"
+    :id :debug? :default false]
+   ["-h" "--help" "Print this help message" :default false]
+   ["-i" "--ignore=LIST" "Ignore the following nodes, comma separated list"
+    :default nil]
+   ["-t" "--timeout=INTEGER" "Seconds before connection times out"
+    :default 10]
+   ["-V" "--version" "Print the current version number."
+    :default false]])
+
+(defn usage
+  "Print a brief description and a short list of available options."
+  [options-summary]
+  (str/join
+   \newline
+   ["check_monitor_ssh is a Naemon plugin to verify ssh connectivity within a Merlin"
+    "cluster."
+    ""
+    "The default behavior is to test the connectivity to all nodes in merlin.conf"
+    "where the option \"connect\" is NOT set to \"no\"."
+    ""
+    "Depending on the result, one of the following exit codes will be given, with"
+    "its corresponding Naemon state:"
+    ""
+    "Exit code:   Naemon state:   Available reasons:"
+    "-------------------------------------------------------------------------------"
+    "0            OK              Successfully connected to all nodes."
+    "                             No nodes to test."
+    "1            WARNING         This state is currently NOT IN USE."
+    "2            CRITICAL        Unable to connect to one or more nodes."
+    "3            UNKNOWN         There was a problem when connecting to one or more"
+    "                             nodes. (This is used as a fallback when the error"
+    "                             causing the connection error is not recognized.)"
+    "-------------------------------------------------------------------------------"
+    ""
+    "Important: Do NOT run as root, but rather as the user monitor. The wrapper"
+    "\"asmonitor\" can be used for this purpose if running the plugin from the"
+    "command line."
+    ""
+    "Usage: check_monitor_ssh [options]"
+    ""
+    "Options:"
+    options-summary
+    ""
+    "Example output:"
+    "\"OK: Successfully connected to: poller1,peer2|'Failed SSH Connections'=0;1;1;;\""]))
+
+(defn validate-args
+  "Validate command line arguments.
+  Either return a map indicating the program should exit (with a error message,
+  and optional ok status), or a map indicating the ticket-id and the options
+  provided."
+  [args]
+  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+    ;; Exit with a warning if the given ticket-id is not in a valid format.
+    (log/debug "The following arguments will be processed as modules:" arguments)
+    (cond
+      (:help options) ; help => exit OK with usage summary
+      {:exit-message (usage summary) :ok? true}
+      (:version options) ; version => exit OK with version number
+      {:exit-message version-number :ok? true}
+      errors ; errors => exit with description of errors
+      {:exit-message errors}
+      ;; custom validation on arguments
+      :else
+      {:debug? (:debug? options)
+       :ignore (:ignore options)
+       :include-connect-no (:include-connect-no options)
+       :timeout (:timeout options)})))
+
+;; End of command line parsing.
+
 (defn -main [& args]
   (let [{:keys [debug? ignore include-connect-no timeout exit-message ok?]}
         (validate-args args)
         user (current-username?)]
     (when debug?
       (set-default-root-logger! :debug "%d [%p] %c (%t) %m%n"))
-    (when (= "root" user)
-      (exit 3 (:64 exit-messages)))
-    (log/debug "Running check_monitor_ssh as user" user)
     (when exit-message
       (exit (if ok? 0 3) exit-message))
+    (when (= "root" user)
+      (exit 64 (:64 exit-messages)))
     (when ignore
       (log/debug "Ignoring:" ignore))
     (let [nodes-to-test (apply-node-filters (nodes)

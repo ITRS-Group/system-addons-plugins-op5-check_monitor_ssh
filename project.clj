@@ -8,10 +8,11 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/tools.cli "0.4.2"]
                  [org.clojure/tools.logging "0.5.0"]
-                 [clj-logging-config "1.9.12"]]
+                 [clj-logging-config "1.9.12"]
+                 [trptcolin/versioneer "0.2.0"]]
   :main check-monitor-ssh.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
   :aliases
   {"make-uberjars"
-   ["do" ["deps"] ["test"] ["clean"] ["uberjar"]]})
+   ["do" ["test"] ["clean"] ["uberjar"]]})
