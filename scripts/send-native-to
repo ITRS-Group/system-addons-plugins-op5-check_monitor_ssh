@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+REMOTE="$1"
+BIN_NAME="check_monitor_ssh"
+
+perform_task() {
+    sh -c "$1" || exit 1
+}
+
+tasks=("lein test"
+       "lein clean"
+       "lein uberjar"
+       "lein native"
+       "scp ./target/${BIN_NAME} ${REMOTE}:/tmp/")
+
+for task in "${tasks[@]}"; do
+    perform_task "$task"
+done

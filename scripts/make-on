@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+REMOTE="$1"
+BIN_NAME="check_monitor_ssh"
+FULL_PATH=$(pwd)
+BASE_PATH=${FULL_PATH%%/scripts*}
+
+perform_task() {
+    sh -c "$1" || exit 1
+}
+
+tasks=("ssh -q -t ${REMOTE} 'rm -rf ~/builds/${BIN_NAME}'"
+       "ssh -q -t $REMOTE 'mkdir -p ~/builds/${BIN_NAME}'"
+       "scp -r $BASE_PATH/{project.clj,Makefile,Dockerfile,resources,src,test} \
+           $REMOTE:builds/${BIN_NAME}/"
+       "ssh -q -t ${REMOTE} 'cd ~/builds/${BIN_NAME} && make'"
+       "scp ${REMOTE}:${BIN_NAME}/target/${BIN_NAME} ~/Downloads/"
+)
+
+for task in "${tasks[@]}"; do
+    perform_task "$task"
+done

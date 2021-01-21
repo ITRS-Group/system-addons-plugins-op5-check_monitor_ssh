@@ -42,20 +42,6 @@
 
 ;; End of general environment functions
 
-;; Command line parsing below. The copyright notice pertains
-;; only to this section.
-
-;; Based on example given at https://github.com/clojure/tools.cli#example-usage
-;; Copyright (c) Rich Hickey and contributors. All rights reserved.
-
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-
-;; You must not remove this notice, or any other, from this software.
-
 (def cli-options
   ;; First three strings describe a short-option, long-option with optional
   ;; example argument description, and a description. All three are optional
@@ -97,7 +83,8 @@
     "-------------------------------------------------------------------------------"
     ""
     "Important: Do NOT run as root, but rather as the user monitor. The wrapper"
-    "\"asmonitor\" can be used for this purpose."
+    "\"asmonitor\" can be used for this purpose if running the plugin from the"
+    "command line."
     ""
     "Usage: check_monitor_ssh [options]"
     ""
@@ -147,10 +134,12 @@
 (defn known-host?
   "Verify that there is an entry for the `host` in the 'known_hosts' file."
   [host]
+  (log/debug (str "Looking for " host " in the known_hosts file."))
   (let [known-hosts-file "/opt/monitor/.ssh/known_hosts"]
     (try
       (let [known-hosts (slurp known-hosts-file)
             host-key (re-find (re-pattern host) known-hosts)]
+        (log/debug "host-key:" host-key)
         (if (= host host-key)
           {:match true :error nil}
           {:match false :error (str "No entry for " host " in known_hosts")}))
@@ -184,17 +173,16 @@
   "Perform `test-ssh-connectivity` tests on all `nodes` in a cluster."
   [nodes timeout]
   (log/debug "Running results-from-cluster on" nodes)
-  (let [r (for [n nodes] (results-from-node n timeout))]
+  (let [r (pmap #(results-from-node % timeout) nodes)]
     (if (< (count r) 1) nil r)))
 
 (defn filter-out-connect=no
   "Filter out any node in `nodes` that have 'connect = no' in 'merlin.conf'."
   [nodes]
-  (log/debug "Removing any nodes that have connect = no in merlin.conf.")
-  (apply merge
-         (for [[k v]
-               nodes :when (bit-test (Integer/parseInt (:flags v)) 1)]
-           {k v})))
+  (log/trace "Removing any nodes that have connect = no.")
+  (->> (remove #(= "no" (:connect ((key %) nodes))) nodes)
+       (map #(hash-map (first %) (last %)))
+       (apply merge)))
 
 (defn filter-out-ignored-nodes
   "Filter out any node in `nodes` specified by the `--ignore` option.
@@ -312,7 +300,8 @@
       (exit (if ok? 0 3) exit-message))
     (when ignore
       (log/debug "Ignoring:" ignore))
-    (let [nodes-to-test (apply-node-filters (op5.n/nodes) ignore
+    (let [nodes-to-test (apply-node-filters (op5.n/nodes)
+                                            ignore
                                             include-connect-no)]
       (when (or (empty? nodes-to-test)
                 (nil? (first nodes-to-test)))

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+REMOTE="$1"
+
+perform_task() {
+    sh -c "$1" || exit 1
+}
+
+tasks=("lein test"
+       "lein clean"
+       "lein uberjar"
+       "find target -name '*standalone.jar' -exec scp {} ${REMOTE}:/tmp/ \;")
+
+for task in "${tasks[@]}"; do
+    perform_task "$task"
+done

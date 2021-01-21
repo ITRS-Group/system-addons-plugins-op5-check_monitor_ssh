@@ -26,7 +26,7 @@
     (->> (shell/sh "asmonitor" "mon" "node" "info")
          (:out)
          (str/split-lines)
-         (partition-all 67))
+         (partition-all 68))
     (catch java.io.IOException e
       (exit 3 (:73 exit-messages)))))
 
