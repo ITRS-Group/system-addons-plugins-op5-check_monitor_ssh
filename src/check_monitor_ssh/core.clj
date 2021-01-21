@@ -3,8 +3,7 @@
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.tools.logging :as log]
             [clj-logging-config.log4j]
-            [clojure.string :as str]
-            [check-monitor-ssh.op5.nodes :as op5.n])
+            [clojure.string :as str])
   (:gen-class))
 
 (defn set-default-root-logger!
@@ -176,6 +175,66 @@
   (let [r (pmap #(results-from-node % timeout) nodes)]
     (if (< (count r) 1) nil r)))
 
+(defn get-nodeinfo
+  "Return a string containing the output from 'mon node show'.
+  See also [[bash]], [[error-msg]] and [[exit-messages]]."
+  []
+  (let [c (bash "mon node show")]
+    (when (zero? (:exit c))
+      (:out c))))
+
+(defn split-at-equal
+  "Split a string (`s`) at the first equal sign ('=')."
+  [s]
+  (let [f (str/split s #"=" 2)
+        a (first f)
+        b (str/triml (last f))]
+    (if (or (= b "") (= b "(null)"))
+      [a nil]
+      [a b])))
+
+(defn equals-into-keyvals
+  "Create a map containing a keyword and a value, extracted from a string
+  `s` divided by an equalsign '='.
+  See also [[split-at-equal]]."
+  [s]
+  (let [x (split-at-equal s)]
+    (hash-map (keyword (str/lower-case (first x))) (last x))))
+
+(defn partition-mon-node-show
+  "Partition the output of in chunks matching the different nodes.
+  `output` is expected to be from [[get-nodeinfo]]."
+  [output]
+  (when (string? output)
+    (->> output
+         (str/split-lines)
+         (remove empty?)
+         (partition-by #(str/starts-with? % "#"))
+         (partition 2))))
+
+(defn mon-node-keywords
+  "Create keywords from the `partitioned-output`, presumably from
+  [[get-nodeinfo]]. Each keyword represents a host."
+  [partitioned-output]
+  (for [n partitioned-output]
+    (keyword (last (str/split (ffirst n) #" ")))))
+
+(defn mon-node-values
+  "Separate the values from the `partitioned-output`, presumably from
+  [[get-nodeinfo]]. Then generate maps based on these lists of values."
+  [partitioned-output]
+  (for [n partitioned-output]
+    (apply merge (map equals-into-keyvals (last n)))))
+
+(defn nodes
+  "Join the keywords and values from [[mon-node-keywords]] and
+  [[mon-node-values]] into a map.
+  See also [[get-nodeinfo]] and [[partition-mon-node-show]]."
+  []
+  (as-> (get-nodeinfo) <>
+        (partition-mon-node-show <>)
+        (zipmap (mon-node-keywords <>) (mon-node-values <>))))
+
 (defn filter-out-connect=no
   "Filter out any node in `nodes` that have 'connect = no' in 'merlin.conf'."
   [nodes]
@@ -300,7 +359,7 @@
       (exit (if ok? 0 3) exit-message))
     (when ignore
       (log/debug "Ignoring:" ignore))
-    (let [nodes-to-test (apply-node-filters (op5.n/nodes)
+    (let [nodes-to-test (apply-node-filters (nodes)
                                             ignore
                                             include-connect-no)]
       (when (or (empty? nodes-to-test)
