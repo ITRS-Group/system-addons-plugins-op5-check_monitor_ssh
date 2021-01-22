@@ -5,6 +5,7 @@ pre:
 post:
   install:
     - bats
+    - monitor-nacoma
     - merlin-apps
   steps: |
     sudo /usr/bin/bats ./op5build/integration_tests.sh
