@@ -2,11 +2,9 @@ vm-config: |
     {"numCPUs": 1, "memoryMB": 2048}
 pre:
     exclude: ['el6/x86_64']
-# post:
-#   install:
-#     - bats
-#     - monitor-nacoma
-#     - merlin-apps
-#   steps: |
-#     sudo echo 'VERSION=8.2.5' > /etc/op5-monitor-release
-#     sudo /usr/bin/bats ./op5build/integration_tests.sh
+post:
+  install:
+    - bats
+    - merlin-apps
+  steps: |
+    sudo /usr/bin/bats ./op5build/integration_tests.sh
