@@ -59,48 +59,6 @@ verify_long_naemon_output() {
     [ "$status" -le 2 ]
 }
 
-@test "invoking /opt/plugins/check_monitor_ssh with option -v" {
-    run asmonitor /usr/bin//opt/plugins/check_monitor_ssh -v
-    [ "$status" -le 2 ]
-    [[ "${lines[0]}" == Self-diagnostics\ for* ]]
-    [[ "${lines[-1]}" == Self-diagnostics\ for* ]]
-}
-
-@test "invoking /opt/plugins/check_monitor_ssh with option -vv" {
-    run asmonitor /usr/bin//opt/plugins/check_monitor_ssh -v
-    [ "$status" -le 2 ]
-    [[ "${lines[0]}" == Self-diagnostics\ for* ]]
-    [[ "${lines[-1]}" == Self-diagnostics\ for* ]]
-}
-
-@test "invoking /opt/plugins/check_monitor_ssh with option -n" {
-    run asmonitor /usr/bin//opt/plugins/check_monitor_ssh -n
-    [ "$status" -le 2 ]
-    [ "${#lines[@]}" -eq 1 ]
-    [ "$(verify_short_naemon_output "${lines[0]}")" ]
-    if [ "$status" -eq 0 ]; then
-        [[ "${lines[0]}" == OK* ]]
-    elif [ "$status" -eq 1 ]; then
-        [[ "${lines[0]}" == WARNING* ]]
-    elif [ "$status" -eq 2 ]; then
-        [[ "${lines[0]}" == CRITICAL* ]]
-    fi
-}
-
-@test "invoking /opt/plugins/check_monitor_ssh with option -n and -v" {
-    run asmonitor /usr/bin//opt/plugins/check_monitor_ssh -n -v
-    [ "$status" -le 2 ]
-    [ "${#lines[@]}" -eq 1 ]
-    [ "$(verify_long_naemon_output "${lines[0]}")" ]
-    if [ "$status" -eq 0 ]; then
-        [[ "${lines[0]}" == OK* ]]
-    elif [ "$status" -eq 1 ]; then
-        [[ "${lines[0]}" == WARNING* ]]
-    elif [ "$status" -eq 2 ]; then
-        [[ "${lines[0]}" == CRITICAL* ]]
-    fi
-}
-
 @test "invoking /opt/plugins/check_monitor_ssh with the invalid option \"--foo\"" {
     run asmonitor /opt/plugins/check_monitor_ssh --foo
     # This is expected to fail with exit code 3.
