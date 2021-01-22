@@ -17,7 +17,7 @@ Requires: openssh-clients
 Requires: merlin-apps
 
 %description
-A system diagnostic tool to help troubleshooting.
+Naemon plugin to verify ssh connectivity within an OP5 Monitor cluster.
 
 %prep
 %setup -q
