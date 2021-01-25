@@ -7,11 +7,11 @@ verify_version_number() {
 }
 
 verify_short_naemon_output() {
-    grep -E '^(OK|WARNING|CRITICAL)\|ok=[0-9]{1,2}\swarning=[0-9]{1,2}\serror=[0-9]{1,2}$' <<< "$1"
+    grep -E '^(OK: Successfully connected to all nodes|WARNING:|CRITICAL:|UNKNOWN:).+?(?=|)Failed SSH Connections=[0-9];[0-9];[0-9]$' <<< "$1"
 }
 
-verify_long_naemon_output() {
-    grep -E '^(OK|WARNING|CRITICAL)(: )?(Warnings:|Errors)?[^\|]*\|ok=[0-9]{1,2}\swarning=[0-9]{1,2}\serror=[0-9]{1,2}$' <<< "$1"
+verify_verbose_naemon_output() {
+    grep -E '^(OK: Successfully connected to:|WARNING:|CRITICAL:|UNKNOWN:).+?(?=|)Failed SSH Connections=[0-9];[0-9];[0-9]$' <<< "$1"
 }
 
 ### Begin pre-tests ###
@@ -51,12 +51,32 @@ verify_long_naemon_output() {
 @test "invoking /opt/plugins/check_monitor_ssh -V as root" {
     run /opt/plugins/check_monitor_ssh -V
     [ "$status" -eq 0 ]
-    [ "$(verify_version_number "${lines[0]}")" ]
+    [ $(verify_version_number "${lines[0]}") ]
 }
 
 @test "invoking /opt/plugins/check_monitor_ssh with no options" {
-    run asmonitor /usr/bin//opt/plugins/check_monitor_ssh
-    [ "$status" -le 2 ]
+    run asmonitor /opt/plugins/check_monitor_ssh
+    [ "$status" -le 3 ]
+    [ $(verify_short_naemon_output "${lines[0]}") ]
+}
+
+@test "invoking /opt/plugins/check_monitor_ssh option -v" {
+    run asmonitor /opt/plugins/check_monitor_ssh -v
+    [ "$status" -le 3 ]
+    [ $(verify_verbose_naemon_output "${lines[0]}") ]
+}
+
+@test "invoking /opt/plugins/check_monitor_ssh option -vv" {
+    run asmonitor /opt/plugins/check_monitor_ssh -vv
+    [ "$status" -le 3 ]
+    [ $(verify_verbose_naemon_output "${lines[0]}") ]
+}
+
+@test "invoking /opt/plugins/check_monitor_ssh option -vvv" {
+    run asmonitor /opt/plugins/check_monitor_ssh -vvv
+    [ "$status" -le 3 ]
+    [ "${#lines[@]}" -gt 5 ]
+    [ $(verify_verbose_naemon_output "${lines[-1]}") ]
 }
 
 @test "invoking /opt/plugins/check_monitor_ssh with the invalid option \"--foo\"" {

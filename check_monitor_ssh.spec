@@ -38,6 +38,8 @@ cp target/%name %buildroot%{prefix}/%name
 rm -rf %{buildroot}
 
 %changelog
+* Mon Jan 25 2021 Johan Thorén <jthoren@itrsgroup.com>
+- 0.1.11 Replace option -d with option -v.
 * Thu Jan 21 2021 Johan Thorén <jthoren@itrsgroup.com>
 - 0.1.10 Fixed problem with encrypted merlin nodes.
 * Tue Jan 7 2020 Johan Thorén <jthoren@itrsgroup.com>

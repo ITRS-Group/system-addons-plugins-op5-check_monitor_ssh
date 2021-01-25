@@ -14,7 +14,17 @@
                                           :pattern pattern
                                           :out :console}))
 
-(set-default-root-logger! :info "%p: %m%n")
+(set-default-root-logger! :fatal "%p: %m%n")
+
+(defn set-log-level!
+  "Set the output level based on `verbosity`.
+  See also [[set-default-root-logger!]]."
+  [verbosity]
+  (case verbosity
+    0 nil
+    1 (set-default-root-logger! :info "%m%n")
+    2 (set-default-root-logger! :debug "%m%n")
+    (set-default-root-logger! :trace "%d [%p] %c (%t) %m%n")))
 
 (def version-number
   "The version number as defined in project.clj."
@@ -26,7 +36,7 @@
   The number of `failed` connections should be passed as an integer to be
   included in the output."
   [failed]
-  (str "|'Failed SSH Connections'=" failed ";1;1;;"))
+  (str "|Failed SSH Connections=" failed ";1;1"))
 
 (def exit-messages
   "Exit messages used by `exit`."
@@ -63,12 +73,12 @@
 (defn known-host?
   "Verify that there is an entry for the `host` in the 'known_hosts' file."
   [host]
-  (log/debug (str "Looking for " host " in the known_hosts file."))
+  (log/trace (str "Looking for " host " in the known_hosts file."))
   (let [known-hosts-file "/opt/monitor/.ssh/known_hosts"]
     (try
       (let [known-hosts (slurp known-hosts-file)
             host-key (re-find (re-pattern host) known-hosts)]
-        (log/debug "host-key:" host-key)
+        (log/trace "host-key:" host-key)
         (if (= host host-key)
           {:match true :error nil}
           {:match false :error (str "No entry for " host " in known_hosts")}))
@@ -79,7 +89,7 @@
   "Perform a basic check of ssh-connectivity to `host`.
   See also [[known-host?]] and [[simple-ssh-command]]."
   [host timeout]
-  (log/debug "Testing ssh connectivity for host:" host)
+  (log/trace "Testing ssh connectivity for host:" host)
   (let [k (known-host? host)]
     (if-not (:match k)
       {:result false :error (:error k)}
@@ -101,7 +111,7 @@
 (defn results-from-cluster
   "Perform `test-ssh-connectivity` tests on all `nodes` in a cluster."
   [nodes timeout]
-  (log/debug "Running results-from-cluster on" nodes)
+  (log/trace "Running results-from-cluster on" nodes)
   (let [r (pmap #(results-from-node % timeout) nodes)]
     (if (< (count r) 1) nil r)))
 
@@ -263,18 +273,27 @@
       (critical-error "Could not resolve")
       ;;
       (seq errors) ; If there are error messages not caught by the filters.
-      (exit 3 (str "UNKNOWN: Problems connecting to: "
-                   errors-names-string ". "
-                   "Errors: " errors-messages-string
-                   perfdata))
+      (exit 3 (if (log/enabled? :info)
+                (str "UNKNOWN: Problems connecting to: "
+                     errors-names-string ". "
+                     (when (log/enabled? :debug)
+                       "Errors: " errors-messages-string)
+                     perfdata)
+                (str "UNKNOWN: Problems occured. Re-run with option -v or -vv"
+                     perfdata)))
       ;;
       (seq failed) ; If there are failed nodes.
-      (exit 2 (str "CRITICAL: Unable to connect to: "
-                   failed-string perfdata))
+      (exit 2 (if (log/enabled? :info)
+                (str "CRITICAL: Unable to connect to: "
+                     failed-string perfdata)
+                (str "CRITICAL: Unable to connect to one or more nodes"
+                     perfdata)))
       ;;
       :else
-      (exit 0 (str "OK: Successfully connected to: "
-                   successful-string perfdata)))))
+      (exit 0 (if (log/enabled? :info)
+                (str "OK: Successfully connected to: "
+                     successful-string perfdata)
+                (str "OK: Successfully connected to all nodes" perfdata))))))
 
 ;; Beginning of command line parsing.
 
@@ -285,13 +304,14 @@
   [["-c" "--include-connect-no"
     "Also test nodes that has \"connect = no\" in \"merlin.conf\""
     :default false]
-   ["-d" "--debug" "Set the verbosity level to debug, use only for debugging"
-    :id :debug? :default false]
    ["-h" "--help" "Print this help message" :default false]
    ["-i" "--ignore=LIST" "Ignore the following nodes, comma separated list"
     :default nil]
    ["-t" "--timeout=INTEGER" "Seconds before connection times out"
     :default 10]
+   ["-v" nil
+    "Verbosity level; may be specified multiple times to increase value."
+    :id :verbosity :default 0 :update-fn inc]
    ["-V" "--version" "Print the current version number."
     :default false]])
 
@@ -340,7 +360,6 @@
   [args]
   (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
     ;; Exit with a warning if the given ticket-id is not in a valid format.
-    (log/debug "The following arguments will be processed as modules:" arguments)
     (cond
       (:help options) ; help => exit OK with usage summary
       {:exit-message (usage summary) :ok? true}
@@ -350,30 +369,29 @@
       {:exit-message errors}
       ;; custom validation on arguments
       :else
-      {:debug? (:debug? options)
-       :ignore (:ignore options)
+      {:ignore (:ignore options)
        :include-connect-no (:include-connect-no options)
-       :timeout (:timeout options)})))
+       :timeout (:timeout options)
+       :verbosity (:verbosity options)})))
 
 ;; End of command line parsing.
 
 (defn -main [& args]
-  (let [{:keys [debug? ignore include-connect-no timeout exit-message ok?]}
+  (let [{:keys [ignore include-connect-no timeout verbosity exit-message ok?]}
         (validate-args args)
         user (current-username?)]
-    (when debug?
-      (set-default-root-logger! :debug "%d [%p] %c (%t) %m%n"))
+    (set-log-level! verbosity)
     (when exit-message
       (exit (if ok? 0 3) exit-message))
     (when (= "root" user)
       (exit 64 (:64 exit-messages)))
     (when ignore
-      (log/debug "Ignoring:" ignore))
+      (log/trace "Ignoring:" ignore))
     (let [nodes-to-test (apply-node-filters (nodes)
                                             ignore
                                             include-connect-no)]
       (when (or (empty? nodes-to-test)
                 (nil? (first nodes-to-test)))
         (exit 0 (:65 exit-messages)))
-      (log/debug "Nodes to test:" (keys nodes-to-test))
+      (log/trace "Nodes to test:" (keys nodes-to-test))
       (run-tests! nodes-to-test timeout))))
