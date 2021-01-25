@@ -302,12 +302,12 @@
   ;; example argument description, and a description. All three are optional
   ;; and positional.
   [["-c" "--include-connect-no"
-    "Also test nodes that has \"connect = no\" in \"merlin.conf\""
+    "Also test nodes that has \"connect = no\" in \"merlin.conf\"."
     :default false]
-   ["-h" "--help" "Print this help message" :default false]
-   ["-i" "--ignore=LIST" "Ignore the following nodes, comma separated list"
+   ["-h" "--help" "Print this help message." :default false]
+   ["-i" "--ignore=LIST" "Ignore the following nodes, comma separated list."
     :default nil]
-   ["-t" "--timeout=INTEGER" "Seconds before connection times out"
+   ["-t" "--timeout=INTEGER" "Seconds before connection times out."
     :default 10]
    ["-v" nil
     "Verbosity level; may be specified multiple times to increase value."
@@ -333,7 +333,6 @@
     "-------------------------------------------------------------------------------"
     "0            OK              Successfully connected to all nodes."
     "                             No nodes to test."
-    "1            WARNING         This state is currently NOT IN USE."
     "2            CRITICAL        Unable to connect to one or more nodes."
     "3            UNKNOWN         There was a problem when connecting to one or more"
     "                             nodes. (This is used as a fallback when the error"
