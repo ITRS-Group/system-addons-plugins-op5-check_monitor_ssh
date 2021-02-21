@@ -10,7 +10,7 @@
                  ;; Use the SNAPSHOT below which contains the :multi option.
                  ;; When it has been released, this should be removed and the
                  ;; :repositories map should be deleted.
-                 [org.clojure/tools.cli "1.0.195-20201220.071442-52"]
+                 [org.clojure/tools.cli "1.0.195-20210214.070531-59"]
                  [org.clojure/tools.logging "1.1.0"]
                  [clj-logging-config "1.9.12"]
                  [trptcolin/versioneer "0.2.0"]]
