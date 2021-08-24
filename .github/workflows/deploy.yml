@@ -1,0 +1,183 @@
+name: Deployment
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+  workflow_dispatch:
+
+jobs:
+  lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: DeLaGuardo/setup-clj-kondo@master
+        with:
+          version: '2021.08.06'
+
+      - uses: actions/checkout@v2
+
+      - name: clj-kondo
+        run: clj-kondo --lint src
+
+      - name: Install lein deps
+        run: lein deps
+
+      - name: Lein Kibit
+        run: lein kibit
+
+  lein_test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: lein deps
+
+    - name: Run tests
+      run: lein test
+
+  build_linux:
+    name: Build Linux
+
+    needs:
+      - lint
+      - lein_test
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - linux-x86_64
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Make
+        run: make
+
+      - name: Move and rename binary
+        run: mv target/check_monitor_ssh check_monitor_ssh-${{ matrix.target }}
+
+      - name: Print the current state of the directory
+        run: ls -alh
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: check_monitor_ssh-${{ matrix.target }}
+          path: check_monitor_ssh-${{ matrix.target }}
+
+  create_release:
+    name: Create Release
+
+    needs:
+      - lint
+      - lein_test
+      - build_linux
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_tag: ${{ steps.tag.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Get tag
+        id: tag
+        uses: dawidd6/action-get-tag@v1
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1.1.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          release_name: Release ${{github.ref}}
+          draft: false
+          prerelease: false
+
+  upload_release_assets:
+    name: Upload Release Assets
+
+    needs:
+      - create_release
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - linux-x86_64
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Download artifact
+        uses: actions/download-artifact@v2.0.5
+        with:
+          name: check_monitor_ssh-${{ matrix.target }}
+
+      - name: Sign artifact
+        uses: tristan-weil/ghaction-checksum-sign-artifact@v1.0.1
+        with:
+          checksum_output: 'artifact_one_file_per_digest'
+          path: 'check_monitor_ssh-*'
+          sign_key: '${{ secrets.SIGN_KEY }}'
+          sign_key_passphrase: '${{ secrets.SIGN_KEY_PASSPHRASE }}'
+          sign_key_fingerprint: '${{ secrets.SIGN_KEY_FINGERPRINT }}'
+          sign_keyserver: '${{ secrets.SIGN_KEY_KEYSERVER }}'
+
+      - name: Print the current state of the directory
+        run: ls -alh
+
+      - name: Upload executable checksum artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: check_monitor_ssh-${{ matrix.target }}.sha256
+          path: check_monitor_ssh-${{ matrix.target }}.sha256
+
+      - name: Upload signature artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: check_monitor_ssh-${{ matrix.target }}.sha256.asc
+          path: check_monitor_ssh-${{ matrix.target }}.sha256.asc
+
+      - name: Release executable
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./check_monitor_ssh-${{ matrix.target }}
+          asset_name: check_monitor_ssh-${{ matrix.target }}
+          asset_content_type: application/octet-stream
+
+      - name: Release executable checksum
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./check_monitor_ssh-${{ matrix.target }}.sha256
+          asset_name: check_monitor_ssh-${{ matrix.target }}.sha256
+          asset_content_type: text/plain
+
+      - name: Release executable signature
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./check_monitor_ssh-${{ matrix.target }}.sha256.asc
+          asset_name: check_monitor_ssh-${{ matrix.target }}.sha256.asc
+          asset_content_type: text/plain

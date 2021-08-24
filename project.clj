@@ -1,4 +1,4 @@
-(defproject check-monitor-ssh "0.1.11"
+(defproject check-monitor-ssh "0.1.11-SNAPSHOT"
   :description "Check Monitor SSH"
   :url "https://itrsgroup.com"
   :license {:name "GPL-3.0"
@@ -16,4 +16,12 @@
   :profiles {:uberjar {:aot :all}}
   :aliases
   {"make-uberjars"
-   ["do" ["test"] ["clean"] ["uberjar"]]})
+   ["do" ["test"] ["clean"] ["uberjar"]]}
+  :release-tasks [["test"]
+                  ["vcs" "assert-committed"]
+                  ["change" "version" "leiningen.release/bump-version" "release"]
+                  ["vcs" "commit"]
+                  ["vcs" "tag"]
+                  ["change" "version" "leiningen.release/bump-version"]
+                  ["vcs" "commit"]
+                  ["vcs" "push"]])

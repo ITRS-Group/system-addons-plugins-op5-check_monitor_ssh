@@ -1,0 +1,39 @@
+name: Test Suite
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: DeLaGuardo/setup-clj-kondo@master
+        with:
+          version: '2021.08.06'
+
+      - uses: actions/checkout@v2
+
+      - name: clj-kondo
+        run: clj-kondo --lint src
+
+      - name: Install lein deps
+        run: lein deps
+
+      - name: Lein Kibit
+        run: lein kibit
+
+  lein_test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: lein deps
+
+    - name: Run tests
+      run: lein test
