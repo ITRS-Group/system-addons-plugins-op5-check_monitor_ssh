@@ -127,6 +127,16 @@ jobs:
         with:
           name: check_monitor_ssh-${{ matrix.target }}
 
+      - name: Build RPM Package
+        id: build_rpm
+        uses: kentik/pkg@v1.0.0-rc7
+        with:
+          name: check_monitor_ssh
+          version: ${{ needs.create_release.outputs.release_tag }}
+          arch: x86_64
+          format: rpm
+          package: package.yml
+
       - name: Sign artifact
         uses: tristan-weil/ghaction-checksum-sign-artifact@v1.0.1
         with:
@@ -180,4 +190,34 @@ jobs:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./check_monitor_ssh-${{ matrix.target }}.sha256.asc
           asset_name: check_monitor_ssh-${{ matrix.target }}.sha256.asc
+          asset_content_type: text/plain
+
+      - name: Release RPM
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.build_rpm.outputs.package }}
+          asset_name: ${{ steps.build_rpm.outputs.package }}
+          asset_content_type: application/x-rpm
+
+      - name: Release RPM checksum
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.build_rpm.outputs.package }}.sha256
+          asset_name: ${{ steps.build_rpm.outputs.package }}.sha256
+          asset_content_type: text/plain
+
+      - name: Release executable signature
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.build_rpm.outputs.package }}.sha256.asc
+          asset_name: ${{ steps.build_rpm.outputs.package }}.sha256.asc
           asset_content_type: text/plain
