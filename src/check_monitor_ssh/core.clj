@@ -41,7 +41,8 @@
 (def exit-messages
   "Exit messages used by `exit`."
   {:64 "ERROR: Running this plugin as root is not allowed."
-   :65 (str "OK: No connections to test" (generate-perfdata-string 0))})
+   :65 (str "OK: No connections to test" (generate-perfdata-string 0))
+   :66 "ERROR: Arguments are not allowed."})
 
 (defn exit
   "Print a `message` and exit the program with the given `status` code.
@@ -113,7 +114,7 @@
   [nodes timeout]
   (log/trace "Running results-from-cluster on" nodes)
   (let [r (pmap #(results-from-node % timeout) nodes)]
-    (if (< (count r) 1) nil r)))
+    (when-not (< (count r) 1) r)))
 
 (defn get-nodeinfo
   "Return a string containing the output from 'mon node show'.
@@ -273,15 +274,16 @@
       (critical-error "Could not resolve")
       ;;
       (seq errors) ; If there are error messages not caught by the filters.
-      (exit 3 (if (log/enabled? :info)
-                (str "UNKNOWN: Problems connecting to: "
-                     errors-names-string ". "
-                     (when (log/enabled? :debug)
-                       "Errors: " errors-messages-string)
+      (exit 3 (cond
+                (log/enabled? :debug)
+                (str "UNKNOWN: Problems connecting to: " errors-names-string
+                     ". Errors: " errors-messages-string perfdata)
+                (log/enabled? :info)
+                (str "UNKNOWN: Problems connecting to: " errors-names-string "."
                      perfdata)
+                :else
                 (str "UNKNOWN: Problems occured. Re-run with option -v or -vv"
                      perfdata)))
-      ;;
       (seq failed) ; If there are failed nodes.
       (exit 2 (if (log/enabled? :info)
                 (str "CRITICAL: Unable to connect to: "
@@ -366,7 +368,8 @@
       {:exit-message version-number :ok? true}
       errors ; errors => exit with description of errors
       {:exit-message errors}
-      ;; custom validation on arguments
+      arguments
+      (exit 66 (:66 exit-messages))
       :else
       {:ignore (:ignore options)
        :include-connect-no (:include-connect-no options)

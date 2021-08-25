@@ -11,6 +11,7 @@
                  [org.clojure/tools.logging "1.1.0"]
                  [clj-logging-config "1.9.12"]
                  [trptcolin/versioneer "0.2.0"]]
+  :plugins [[lein-kibit "0.1.8"]]
   :main check-monitor-ssh.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
