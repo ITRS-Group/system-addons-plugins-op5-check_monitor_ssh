@@ -359,7 +359,7 @@
   and optional ok status), or a map indicating the ticket-id and the options
   provided."
   [args]
-  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+  (let [{:keys [options errors summary]} (parse-opts args cli-options)]
     ;; Exit with a warning if the given ticket-id is not in a valid format.
     (cond
       (:help options) ; help => exit OK with usage summary
@@ -368,8 +368,6 @@
       {:exit-message version-number :ok? true}
       errors ; errors => exit with description of errors
       {:exit-message errors}
-      arguments
-      (exit 66 (:66 exit-messages))
       :else
       {:ignore (:ignore options)
        :include-connect-no (:include-connect-no options)
