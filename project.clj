@@ -1,4 +1,4 @@
-(defproject check-monitor-ssh "0.1.11"
+(defproject check-monitor-ssh "0.1.12-SNAPSHOT"
   :description "Check Monitor SSH"
   :url "https://itrsgroup.com"
   :license {:name "GPL-3.0"
