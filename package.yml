@@ -2,6 +2,7 @@ meta:
   description: Naemon plugin to verify ssh connectivity within an OP5 Monitor cluster.
   vendor: ITRS Group
   maintainer: Johan Thorén <jthoren@itrsgroup.com>
+  license: GPLv3
 files:
   "/opt/plugins/check_monitor_ssh":
     file: check_monitor_ssh-linux-x86_64
