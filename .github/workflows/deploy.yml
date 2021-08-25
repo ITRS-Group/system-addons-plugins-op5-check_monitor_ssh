@@ -212,7 +212,7 @@ jobs:
           asset_name: ${{ steps.build_rpm.outputs.package }}.sha256
           asset_content_type: text/plain
 
-      - name: Release executable signature
+      - name: Release RPM signature
         uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
