@@ -8,3 +8,11 @@ files:
     file: check_monitor_ssh-linux-x86_64
     mode: "0755"
     user: "root"
+  "/usr/share/doc/check_monitor_ssh/README.md":
+    file: README.md
+    mode: "0644"
+    user: "root"
+  "/usr/share/licenses/check_monitor_ssh/LICENSE":
+    file: LICENSE
+    mode: "0644"
+    user: "root"

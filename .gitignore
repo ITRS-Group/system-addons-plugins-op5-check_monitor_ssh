@@ -15,3 +15,5 @@ pom.xml.asc
 .hg/
 TAGS
 /.lsp/
+/*.rpm
+/check_monitor_ssh-linux-x86_64

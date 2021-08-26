@@ -105,13 +105,16 @@ jobs:
           draft: false
           prerelease: false
 
-  upload_release_assets:
-    name: Upload Release Assets
+  build_and_sign_rpm:
+    name: Build and sign RPM
 
     needs:
       - create_release
 
     runs-on: ubuntu-latest
+
+    outputs:
+      rpm_package: ${{ steps.build_rpm.outputs.package }}
 
     strategy:
       fail-fast: true
@@ -137,11 +140,59 @@ jobs:
           format: rpm
           package: package.yml
 
-      - name: Sign artifact
+      - name: Save passphrase to file
+        run: echo "${{ secrets.SIGN_KEY_PASSPHRASE }}" > ~/.sign_pass
+
+      - name: Change permissions on pass file
+        run: chmod 600 ~/.sign_pass
+
+      - name: Import signing key to sign RPM
+        run: |
+          echo "${{ secrets.SIGN_KEY }}" | \
+          gpg --batch --pinentry-mode loopback --import
+
+      - name: DEBUG List available keys
+        run: gpg -K
+
+      - name: Export public key
+        run: |
+          gpg --export -a "${{ secrets.SIGN_KEY_FINGERPRINT }}" \
+          > RPM-GPG-KEY-pmanager
+
+      - name: Import the public key to the RPM database
+        run: rpm --import RPM-GPG-KEY-pmanager
+
+      - name: Print the GPG keys in the RPM database
+        run: |
+          rpm -q gpg-pubkey --qf '%{name}-%{version}-%{release} --> %{summary}\n'
+
+      - name: Check existing signatures
+        run: rpm --checksig ${{ steps.build_rpm.outputs.package }}
+
+      - name: Change owner of the RPM
+        run: sudo chown runner:docker ${{ steps.build_rpm.outputs.package }}
+
+      - name: Copy template .rpmmacros to ~/
+        run: cp template/.rpmmacros ~/
+
+      - name: Print the current state of the directory
+        run: ls -alh
+
+      - name: Print the current state of ~/
+        run: ls -alh ~/
+
+      - name: Sign the RPM
+        run: rpm -vv --addsign ${{ steps.build_rpm.outputs.package }}
+
+      - name: Verify the signature
+        run: rpm --checksig ${{ steps.build_rpm.outputs.package }}
+
+      - name: Create checksum
         uses: tristan-weil/ghaction-checksum-sign-artifact@v1.0.1
         with:
-          checksum_output: 'artifact_one_file_per_digest'
-          path: 'check_monitor_ssh-*'
+          checksum_output: 'one_file_per_digest'
+          sign_output: 'checksum_detach'
+          path: 'check_monitor_ssh*'
           sign_key: '${{ secrets.SIGN_KEY }}'
           sign_key_passphrase: '${{ secrets.SIGN_KEY_PASSPHRASE }}'
           sign_key_fingerprint: '${{ secrets.SIGN_KEY_FINGERPRINT }}'
@@ -150,17 +201,61 @@ jobs:
       - name: Print the current state of the directory
         run: ls -alh
 
-      - name: Upload executable checksum artifact
+      - name: Upload checksum artifact
         uses: actions/upload-artifact@v2
         with:
-          name: check_monitor_ssh-${{ matrix.target }}.sha256
-          path: check_monitor_ssh-${{ matrix.target }}.sha256
+          name: SHA256SUMS
+          path: SHA256SUMS
 
       - name: Upload signature artifact
         uses: actions/upload-artifact@v2
         with:
-          name: check_monitor_ssh-${{ matrix.target }}.sha256.asc
-          path: check_monitor_ssh-${{ matrix.target }}.sha256.asc
+          name: SHA256SUMS.asc
+          path: SHA256SUMS.asc
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v2
+        with:
+          path: ./${{ steps.build_rpm.outputs.package }}
+          name: ${{ steps.build_rpm.outputs.package }}
+
+  upload_release_assets:
+    name: Upload Release Assets
+
+    needs:
+      - create_release
+      - build_and_sign_rpm
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - linux-x86_64
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Download artifact
+        uses: actions/download-artifact@v2.0.5
+        with:
+          name: check_monitor_ssh-${{ matrix.target }}
+
+      - name: Download RPM artifact
+        uses: actions/download-artifact@v2.0.5
+        with:
+          name: ${{ needs.build_and_sign_rpm.outputs.rpm_package }}
+
+      - name: Download checksum artifact
+        uses: actions/download-artifact@v2.0.5
+        with:
+          name: SHA256SUMS
+
+      - name: Download signature artifact
+        uses: actions/download-artifact@v2.0.5
+        with:
+          name: SHA256SUMS.asc
 
       - name: Release executable
         uses: actions/upload-release-asset@v1.0.2
@@ -172,24 +267,24 @@ jobs:
           asset_name: check_monitor_ssh-${{ matrix.target }}
           asset_content_type: application/octet-stream
 
-      - name: Release executable checksum
+      - name: Release checksums
         uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./check_monitor_ssh-${{ matrix.target }}.sha256
-          asset_name: check_monitor_ssh-${{ matrix.target }}.sha256
+          asset_path: ./SHA256SUMS
+          asset_name: SHA256SUMS
           asset_content_type: text/plain
 
-      - name: Release executable signature
+      - name: Release signature
         uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./check_monitor_ssh-${{ matrix.target }}.sha256.asc
-          asset_name: check_monitor_ssh-${{ matrix.target }}.sha256.asc
+          asset_path: ./SHA256SUMS.asc
+          asset_name: SHA256SUMS.asc
           asset_content_type: text/plain
 
       - name: Release RPM
@@ -198,26 +293,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.build_rpm.outputs.package }}
-          asset_name: ${{ steps.build_rpm.outputs.package }}
+          asset_path: ./${{ needs.build_and_sign_rpm.outputs.rpm_package }}
+          asset_name: ${{ needs.build_and_sign_rpm.outputs.rpm_package }}
           asset_content_type: application/x-rpm
-
-      - name: Release RPM checksum
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.build_rpm.outputs.package }}.sha256
-          asset_name: ${{ steps.build_rpm.outputs.package }}.sha256
-          asset_content_type: text/plain
-
-      - name: Release RPM signature
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.build_rpm.outputs.package }}.sha256.asc
-          asset_name: ${{ steps.build_rpm.outputs.package }}.sha256.asc
-          asset_content_type: text/plain

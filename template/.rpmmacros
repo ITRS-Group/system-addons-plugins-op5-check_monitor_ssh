@@ -1,0 +1,4 @@
+%_signature gpg
+%_gpg_name Johan Thoren (GitHub Signing Key) <johan@thoren.xyz>
+%__gpg /usr/bin/gpg2
+%__gpg_sign_cmd %{__gpg} gpg --force-v3-sigs --batch --verbose --no-armor --pinentry-mode loopback --passphrase-file %{getenv:HOME}/.sign_pass --no-secmem-warning -u "%{_gpg_name}" -sbo %{__signature_filename} --digest-algo sha256 %{__plaintext_filename}
