@@ -20,9 +20,7 @@ RUN apt-get update && apt-get install -yy make gcc
 
 # Download and compile musl:
 WORKDIR /
-# Using the http version until the musl project updates their cert.
-# FIXME: Update to https.
-RUN curl -sL http://musl.libc.org/releases/musl-${MUSL_VERSION}.tar.gz \
+RUN curl -sL https://musl.libc.org/releases/musl-${MUSL_VERSION}.tar.gz \
 | tar -C /opt -xzvf -
 
 WORKDIR /opt/musl-${MUSL_VERSION}
