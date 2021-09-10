@@ -199,7 +199,7 @@
         ;; is to avoid silent errors.
         (doseq [i <>]
           (when-not (contains? nodes (keyword i))
-            (exit 66 (str "ERROR: No such node: " i))))
+            (exit 67 (str "ERROR: No such node: " i))))
         (map keyword <>)) ; Make keywords out of the items.
       (conj <> :ipc)      ; Add the local node to the list and
       (apply dissoc nodes <>)))) ; delete them all, returning a new map.
@@ -359,7 +359,7 @@
   and optional ok status), or a map indicating the ticket-id and the options
   provided."
   [args]
-  (let [{:keys [options errors summary]} (parse-opts args cli-options)]
+  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
     ;; Exit with a warning if the given ticket-id is not in a valid format.
     (cond
       (seq arguments)
@@ -369,7 +369,7 @@
       (:version options) ; version => exit OK with version number
       {:exit-message version-number :ok? true}
       errors ; errors => exit with description of errors
-      {:exit-message errors}
+      {:exit-message (str/join \newline errors)}
       :else
       {:ignore (:ignore options)
        :include-connect-no (:include-connect-no options)

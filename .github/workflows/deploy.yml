@@ -73,6 +73,70 @@ jobs:
           name: check_monitor_ssh-${{ matrix.target }}
           path: check_monitor_ssh-${{ matrix.target }}
 
+  integration_tests:
+    name: Run integration tests
+
+    needs:
+      - lint
+      - lein_test
+      - build_linux
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      BATS_DIR: "test/check_monitor_ssh/bats/"
+      BATS_EXT_URL: "https://raw.githubusercontent.com/mbland/go-script-bash/master/lib/bats"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+
+    steps:
+      - name: Setup BATS
+        uses: mig4/setup-bats@v1
+        with:
+          bats-version: 1.4.1
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create directory for bats extensions
+        run: mkdir -p "$BATS_DIR"
+
+      - name: Download bats extensions
+        run: |
+          curl ${BATS_EXT_URL}/assertion-test-helpers -o ${BATS_DIR}
+          curl ${BATS_EXT_URL}/assertions -o ${BATS_DIR}
+          curl ${BATS_EXT_URL}/background-process -o ${BATS_DIR}
+          curl ${BATS_EXT_URL}/helper-function -o ${BATS_DIR}
+          curl ${BATS_EXT_URL}/helpers -o ${BATS_DIR}
+
+      - name: Display the contents of the test dir
+        run: ls -Ral test
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: check_monitor_ssh-${{ matrix.target }}
+
+      - name: Make artifact executable
+        run: chmod +x check_monitor_ssh-${{ matrix.target }}
+
+      - name: List directory
+        run: ls -alh
+
+      - name: Rename binary
+        run: mv check_monitor_ssh-${{ matrix.target }} check_monitor_ssh
+
+      - name: Run tests
+        shell: bash
+        run: bats -r .
+
   create_release:
     name: Create Release
 
@@ -80,6 +144,7 @@ jobs:
       - lint
       - lein_test
       - build_linux
+      - integration_tests
 
     runs-on: ubuntu-latest
 
