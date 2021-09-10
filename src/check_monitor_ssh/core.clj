@@ -362,6 +362,8 @@
   (let [{:keys [options errors summary]} (parse-opts args cli-options)]
     ;; Exit with a warning if the given ticket-id is not in a valid format.
     (cond
+      (seq arguments)
+      (exit 66 (:66 exit-messages))
       (:help options) ; help => exit OK with usage summary
       {:exit-message (usage summary) :ok? true}
       (:version options) ; version => exit OK with version number

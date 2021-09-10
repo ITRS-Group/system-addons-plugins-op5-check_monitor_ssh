@@ -17,3 +17,4 @@ TAGS
 /.lsp/
 /*.rpm
 /check_monitor_ssh-linux-x86_64
+/test/check_monitor_ssh/bats/
