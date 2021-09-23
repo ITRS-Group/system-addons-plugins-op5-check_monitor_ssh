@@ -1,0 +1,2 @@
+resources/* linguist-vendored
+test/check_monitor_ssh/bats/* linguist-vendored
